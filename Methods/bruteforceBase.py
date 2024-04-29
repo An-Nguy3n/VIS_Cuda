@@ -173,10 +173,19 @@ class BruteforceBase(Base):
                 max_cycle = self.data["TIME"].max()
                 for i in range(self.num_cycle):
                     if len(list_df[i]) == 0: continue
-                    self.cursor.execute(qf.insert_rows(
-                        f"{max_cycle-self.num_cycle+1+i}_{self.old_cur_opr_per_fml}",
-                        df_formula, list_df[i]
-                    ))
+                    # self.cursor.execute(qf.insert_rows(
+                    #     f"{max_cycle-self.num_cycle+1+i}_{self.old_cur_opr_per_fml}",
+                    #     df_formula, list_df[i]
+                    # ))
+                    df_index = list_df[i].index
+                    df_save = pd.concat([df_formula.loc[df_index], list_df[i]], axis=1)
+                    df_save.to_sql(
+                        name=f"{max_cycle-self.num_cycle+1+i}_{self.old_cur_opr_per_fml}",
+                        con=self.connection,
+                        if_exists="append",
+                        index=False,
+                        method="multi"
+                    )
                     self.count_target += len(list_df[i])
 
             self.old_start_id += self.previos_count
