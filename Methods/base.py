@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from numba import njit
 
 
 class Base:
@@ -84,3 +85,41 @@ operator_mapping = {
     "<=": lambda data, col, val: data[data[col] <= val],
     "!=": lambda data, col, val: data[data[col] != val],
 }
+
+
+@njit
+def calculate_formula(formula, operand):
+    temp_0 = np.zeros(operand.shape[1])
+    temp_1 = temp_0.copy()
+    temp_op = -1
+    num_operand = operand.shape[0]
+    for i in range(1, formula.shape[0], 2):
+        if formula[i] >= num_operand:
+            raise
+
+        if formula[i-1] < 2:
+            temp_op = formula[i-1]
+            temp_1 = operand[formula[i]].copy()
+        else:
+            if formula[i-1] == 2:
+                temp_1 *= operand[formula[i]]
+            else:
+                temp_1 /= operand[formula[i]]
+
+        if i+1 == formula.shape[0] or formula[i+1] < 2:
+            if temp_op == 0:
+                temp_0 += temp_1
+            else:
+                temp_0 -= temp_1
+
+    temp_0[np.isnan(temp_0)] = -1.7976931348623157e+308
+    temp_0[np.isinf(temp_0)] = -1.7976931348623157e+308
+    return temp_0
+
+
+@njit
+def decode_formula(f, len_):
+    rs = np.full(len(f)*2, 0, dtype=int)
+    rs[0::2] = f // len_
+    rs[1::2] = f % len_
+    return rs
