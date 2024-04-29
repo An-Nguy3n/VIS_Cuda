@@ -14,12 +14,12 @@ def harmean(arr):
 
 
 @njit
-def multi_investment_strictly(WEIGHT,
-                              INDEX,
-                              PROFIT,
-                              SYMBOL,
-                              INTEREST,
-                              BOOL_ARG):
+def multi_invest_2(WEIGHT,
+                   INDEX,
+                   PROFIT,
+                   SYMBOL,
+                   INTEREST,
+                   BOOL_ARG):
     size = INDEX.shape[0] - 1
     arr_loop = np.full((size-1)*5, -1.7976931348623157e+308, float)
     for i in range(1, size):
