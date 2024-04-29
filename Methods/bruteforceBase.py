@@ -124,6 +124,15 @@ class BruteforceBase(Base):
         self.d_threshold = cuda.device_array((num_array, num_threshold), np.float64)
         self.d_results = cuda.device_array((num_array, num_threshold, self.num_cycle, 2), np.float64)
         self.d_finals = cuda.device_array((num_array, self.num_cycle, 4), np.float64)
+    
+    def prepare_maximum_min_3(self):
+        num_array = self.temp_weights.shape[0]
+        num_threshold = 5*(self.INDEX.shape[0]-2)
+
+        self.d_threshold = cuda.device_array((num_array, num_threshold), np.float64)
+        self.d_results = cuda.device_array((num_array, num_threshold, self.num_cycle, 2), np.float64)
+        self.d_finals = cuda.device_array((num_array, self.num_cycle, 4), np.float64)
+        self.d_temp_3s = cuda.device_array((num_array, num_threshold, 3), np.float64)
 
     def add_to_temp_storage(self, weights, formulas):
         len_ = weights.shape[0]
@@ -153,13 +162,12 @@ class BruteforceBase(Base):
     def save_history(self, flag=0):
         if self.previos_count != 0:
             cuda.synchronize()
+            encoded_fmls = self.old_d_encoded_fmls[:self.previos_count].copy_to_host()
+            df_formula = pd.DataFrame(encoded_fmls)
+            df_formula.columns = [f"E{k}" for k in range(self.old_cur_opr_per_fml)]
+            df_formula.insert(loc=0, column="id", value=np.arange(self.old_start_id, self.old_start_id+self.previos_count))
 
             if self.list_func[0] == "multi_invest_2":
-                encoded_fmls = self.old_d_encoded_fmls[:self.previos_count].copy_to_host()
-                df_formula = pd.DataFrame(encoded_fmls)
-                df_formula.columns = [f"E{k}" for k in range(self.old_cur_opr_per_fml)]
-                df_formula.insert(loc=0, column="id", value=np.arange(self.old_start_id, self.old_start_id+self.previos_count))
-
                 finals = self.d_finals[:self.previos_count].copy_to_host()
                 list_df = []
                 for i in range(self.num_cycle):
@@ -169,24 +177,31 @@ class BruteforceBase(Base):
                         df = operator_mapping[val[0]](df, key, val[1])
 
                     list_df.append(df)
-
-                max_cycle = self.data["TIME"].max()
+            
+            elif self.list_func[0] == "maximum_min_3":
+                finals = self.d_finals[:self.previos_count].copy_to_host()
+                list_df = []
                 for i in range(self.num_cycle):
-                    if len(list_df[i]) == 0: continue
-                    # self.cursor.execute(qf.insert_rows(
-                    #     f"{max_cycle-self.num_cycle+1+i}_{self.old_cur_opr_per_fml}",
-                    #     df_formula, list_df[i]
-                    # ))
-                    df_index = list_df[i].index
-                    df_save = pd.concat([df_formula.loc[df_index], list_df[i]], axis=1)
-                    df_save.to_sql(
-                        name=f"{max_cycle-self.num_cycle+1+i}_{self.old_cur_opr_per_fml}",
-                        con=self.connection,
-                        if_exists="append",
-                        index=False,
-                        method="multi"
-                    )
-                    self.count_target += len(list_df[i])
+                    df = pd.DataFrame(finals[:, i, :])
+                    df.columns = ["ValGeo3", "MinGeo3", "ValHar3", "MinHar3"]
+                    for key, val in self.filters.items():
+                        df = operator_mapping[val[0]](df, key, val[1])
+
+                    list_df.append(df)
+
+            max_cycle = self.data["TIME"].max()
+            for i in range(self.num_cycle):
+                if len(list_df[i]) == 0: continue
+                df_index = list_df[i].index
+                df_save = pd.concat([df_formula.loc[df_index], list_df[i]], axis=1)
+                df_save.to_sql(
+                    name=f"{max_cycle-self.num_cycle+1+i}_{self.old_cur_opr_per_fml}",
+                    con=self.connection,
+                    if_exists="append",
+                    index=False,
+                    method="multi"
+                )
+                self.count_target += len(list_df[i])
 
             self.old_start_id += self.previos_count
             self.change_checkpoint()
@@ -214,6 +229,21 @@ class BruteforceBase(Base):
                 self.d_PROFIT,
                 self.d_SYMBOL,
                 self.d_BOOL_ARG,
+                self.d_formulas,
+                self.old_d_encoded_fmls,
+                self.OPERAND.shape[0]
+            )
+        
+        elif self.list_func[0] == "maximum_min_3":
+            ef.maximum_min_3[ef.NUM_BLOCK, ef.BLOCK_DIM](
+                self.d_weights,
+                self.d_threshold,
+                self.d_results,
+                self.d_finals,
+                self.d_temp_3s,
+                self.INTEREST,
+                self.d_INDEX,
+                self.d_PROFIT,
                 self.d_formulas,
                 self.old_d_encoded_fmls,
                 self.OPERAND.shape[0]
