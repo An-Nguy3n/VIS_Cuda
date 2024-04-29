@@ -69,3 +69,43 @@ def multi_invest_2(weight, threshold, t_idx, result,
             n = float(index_size - 2 - i)
             result[rs_idx, 0] = math.exp(Geo2/n)
             result[rs_idx, 1] = n / Har2
+
+
+@cuda.jit(device=True)
+def maximum_min_3(weight, threshold, t_idx, result, temp_3,
+                  INTEREST, INDEX, PROFIT):
+    index_size = INDEX.shape[0]
+    num_cycle = result.shape[0]
+    minHar = 1.7976931348623157e+308
+    minGeo = 1.7976931348623157e+308
+
+    for i in range(index_size-2, 0, -1):
+        start, end = INDEX[i], INDEX[i+1]
+        temp = 0.0
+        count = 0
+        for k in range(start, end):
+            if weight[k] > threshold:
+                count += 1
+                temp += PROFIT[k]
+
+        if count == 0:
+            temp_3[int(i%3)] = INTEREST
+        else:
+            temp_3[int(i%3)] = temp / count
+
+        if i <= index_size - 4:
+            Har = 0.0
+            Geo = 0.0
+            for j in range(3):
+                Har += 1.0 / temp_3[j]
+                Geo += math.log(temp_3[j])
+
+            Har = 3.0 / Har
+            Geo = math.exp(Geo/3.0)
+            if Har < minHar: minHar = Har
+            if Geo < minGeo: minGeo = Geo
+
+        if i <= num_cycle and t_idx + 1 >= i:
+            rs_idx = num_cycle - i
+            result[rs_idx, 0] = minGeo
+            result[rs_idx, 1] = minHar
