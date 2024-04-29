@@ -199,7 +199,8 @@ class BruteforceBase(Base):
                     con=self.connection,
                     if_exists="append",
                     index=False,
-                    method="multi"
+                    method="multi",
+                    chunksize=1000
                 )
                 self.count_target += len(list_df[i])
 
