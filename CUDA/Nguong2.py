@@ -2,8 +2,8 @@ from numba import cuda
 from CUDA import deviceFuncs as devF
 import math
 
-NUM_BLOCK = 60
-BLOCK_DIM = 256
+NUM_BLOCK = 300
+BLOCK_DIM = 64
 
 
 @cuda.jit
