@@ -1,0 +1,71 @@
+from numba import cuda
+import math
+
+
+@cuda.jit(device=True)
+def max_of_array(arr, left, right, supremum):
+    max_ = -1.7976931348623157e+308
+    for i in range(left, right):
+        if arr[i] < supremum and arr[i] > max_:
+            max_ = arr[i]
+
+    return max_
+
+
+@cuda.jit(device=True)
+def top_n_of_array(arr, left, right, result, start, n):
+    supremum = 1.7976931348623157e+308
+    for i in range(n):
+        supremum = max_of_array(arr, left, right, supremum)
+        result[start+i] = supremum
+
+
+@cuda.jit(device=True)
+def multi_invest_2(weight, threshold, t_idx, result,
+                   INTEREST, INDEX, PROFIT, SYMBOL, BOOL_ARG):
+    index_size = INDEX.shape[0]
+    num_cycle = result.shape[0]
+
+    reason = 0
+    Geo2 = 0.0
+    Har2 = 0.0
+    for i in range(index_size-3, 0, -1):
+        start, end = INDEX[i], INDEX[i+1]
+        temp = 0.0
+        count = 0
+        check = False
+        if reason == 0:
+            end2 = INDEX[i+2]
+            for k in range(start, end):
+                if weight[k] > threshold and BOOL_ARG[k]:
+                    check = True
+                    sym = SYMBOL[k]
+                    for s in range(end, end2):
+                        if SYMBOL[s] == sym:
+                            if weight[s] > threshold:
+                                count += 1
+                                temp += PROFIT[k]
+                            break
+        else:
+            for k in range(start, end):
+                if weight[k] > threshold and BOOL_ARG[k]:
+                    check = True
+                    count += 1
+                    temp += PROFIT[k]
+
+        if count == 0:
+            Geo2 += math.log(INTEREST)
+            Har2 += 1.0 / INTEREST
+            if not check:
+                reason = 1
+        else:
+            temp = temp / count
+            Geo2 += math.log(temp)
+            Har2 += 1.0 / temp
+            reason = 0
+
+        if i <= num_cycle and t_idx + 1 >= i:
+            rs_idx = num_cycle - i
+            n = float(index_size - 2 - i)
+            result[rs_idx, 0] = math.exp(Geo2/n)
+            result[rs_idx, 1] = n / Har2
