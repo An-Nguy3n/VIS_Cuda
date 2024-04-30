@@ -123,3 +123,38 @@ def decode_formula(f, len_):
     rs[0::2] = f // len_
     rs[1::2] = f % len_
     return rs
+
+
+__STRING_OPERATOR = "+-*/"
+
+def convert_arrF_to_strF(arrF):
+    strF = ""
+    for i in range(len(arrF)):
+        if i % 2 == 1:
+            strF += str(arrF[i])
+        else:
+            strF += __STRING_OPERATOR[arrF[i]]
+
+    return strF
+
+def convert_strF_to_arrF(strF):
+    f_len = sum(strF.count(c) for c in __STRING_OPERATOR) * 2
+    str_len = len(strF)
+    arrF = np.full(f_len, 0)
+
+    idx = 0
+    for i in range(f_len):
+        if i % 2 == 1:
+            t_ = 0
+            while True:
+                t_ = 10*t_ + int(strF[idx])
+                idx += 1
+                if idx == str_len or strF[idx] in __STRING_OPERATOR:
+                    break
+
+            arrF[i] = t_
+        else:
+            arrF[i] = __STRING_OPERATOR.index(strF[idx])
+            idx += 1
+
+    return arrF
