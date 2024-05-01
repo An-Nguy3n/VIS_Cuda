@@ -232,3 +232,83 @@ def multi_invest_1(WEIGHT,
             ValHarNgn = v
 
     return ValGeoNgn, GeoNgn, ValHarNgn, HarNgn
+
+
+@njit
+def linear_regression(A, B):
+    try:
+        # Calculate means
+        mean_A = np.mean(A)
+        mean_B = np.mean(B)
+
+        # Calculate covariance and variance
+        cov_AB = 0.0
+        for i in range(len(A)):
+            cov_AB += (A[i]-mean_A)*(B[i]-mean_B)
+
+        cov_AB /= len(A)
+        var_A = np.var(A)
+
+        # Estimate coefficients
+        m = cov_AB / var_A
+        b = mean_B - m * mean_A
+
+        return m, b
+    except:
+        return 0.0, 0.0
+
+@njit
+def _find_slope(profit_, value_, y):
+    if (value_ == 1.7976931348623157e+308).any() or y == 1.7976931348623157e+308:
+        return 0.0, 0.0
+
+    temp = np.argsort(value_)
+    value = value_[temp]
+    profit = profit_[temp]
+    n = value.shape[0]
+    arr_avg = np.zeros(n)
+    for i in range(n):
+        arr_avg[i] = np.mean(profit[i:])
+
+    m1, b1 = linear_regression(value, arr_avg)
+    slope_avg = m1*y + b1
+    if np.isinf(slope_avg):
+        slope_avg = 0.0
+
+    if (value_ <= 0.0).any() or y <= 0.0:
+        return slope_avg, 0.0
+
+    arr_wgtavg = np.zeros(n)
+    for i in range(n):
+        arr_wgtavg[i] = np.sum(profit[i:] * value[i:]) / np.sum(value[i:])
+
+    m2, b2 = linear_regression(value, arr_wgtavg)
+    slope_wgtavg = m2*y + b2
+    if np.isinf(slope_wgtavg):
+        slope_wgtavg = 0.0
+
+    return slope_avg, slope_wgtavg
+
+
+@njit
+def find_slope(WEIGHT, INDEX, PROFIT, INTEREST):
+    size = INDEX.shape[0] - 1
+    arr_profit = np.zeros(size)
+    arr_inv_value = np.zeros(size)
+    for i in range(size-1, -1, -1):
+        idx = size - 1 - i
+        start, end = INDEX[i], INDEX[i+1]
+        wgt_ = WEIGHT[start:end]
+        arr_max = np.where(wgt_==max(wgt_))[0]
+        if arr_max.shape[0] == 1:
+            arr_profit[idx] = PROFIT[arr_max[0]+start]
+            arr_inv_value[idx] = wgt_[arr_max[0]]
+        else:
+            arr_profit[idx] = INTEREST
+            arr_inv_value[idx] = 1.7976931348623157e+308
+
+    temp_profit = arr_profit[:-1]
+    temp_value = arr_inv_value[:-1]
+    y = arr_inv_value[-1]
+    slope_avg, slope_wgtavg = _find_slope(temp_profit, temp_value, y)
+    return slope_avg, slope_wgtavg
