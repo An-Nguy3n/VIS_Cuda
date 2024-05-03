@@ -249,6 +249,22 @@ class BruteforceBase(Base):
                 self.old_d_encoded_fmls,
                 self.OPERAND.shape[0]
             )
+        
+        elif self.list_func[0] == "multi_invest_3":
+            ef.multi_invest_3[ef.NUM_BLOCK, ef.BLOCK_DIM](
+                self.d_weights,
+                self.d_threshold,
+                self.d_results,
+                self.d_finals,
+                self.INTEREST,
+                self.d_INDEX,
+                self.d_PROFIT,
+                self.d_SYMBOL,
+                self.d_BOOL_ARG,
+                self.d_formulas,
+                self.old_d_encoded_fmls,
+                self.OPERAND.shape[0]
+            )
 
         self.previos_count = self.count_temp
         self.old_start_id = self.start_id
