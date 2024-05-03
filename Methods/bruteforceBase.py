@@ -125,6 +125,9 @@ class BruteforceBase(Base):
         self.d_results = cuda.device_array((num_array, num_threshold, self.num_cycle, 2), np.float64)
         self.d_finals = cuda.device_array((num_array, self.num_cycle, 4), np.float64)
     
+    def prepare_multi_invest_3(self):
+        self.prepare_multi_invest_2()
+    
     def prepare_maximum_min_3(self):
         num_array = self.temp_weights.shape[0]
         num_threshold = 5*(self.INDEX.shape[0]-2)
