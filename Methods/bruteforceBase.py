@@ -188,6 +188,17 @@ class BruteforceBase(Base):
                         df = operator_mapping[val[0]](df, key, val[1])
 
                     list_df.append(df)
+            
+            elif self.list_func[0] == "multi_invest_3":
+                finals = self.d_finals[:self.previos_count].copy_to_host()
+                list_df = []
+                for i in range(self.num_cycle):
+                    df = pd.DataFrame(finals[:, i, :])
+                    df.columns = ["ValGeo3", "GeoNgn3", "ValHar3", "HarNgn3"]
+                    for key, val in self.filters.items():
+                        df = operator_mapping[val[0]](df, key, val[1])
+
+                    list_df.append(df)
 
             max_cycle = self.data["TIME"].max()
             for i in range(self.num_cycle):
