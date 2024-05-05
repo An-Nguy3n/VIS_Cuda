@@ -312,3 +312,72 @@ def find_slope(WEIGHT, INDEX, PROFIT, INTEREST):
     y = arr_inv_value[-1]
     slope_avg, slope_wgtavg = _find_slope(temp_profit, temp_value, y)
     return slope_avg, slope_wgtavg
+
+
+@njit
+def multi_invest_3(WEIGHT,
+                   INDEX,
+                   PROFIT,
+                   SYMBOL,
+                   INTEREST,
+                   BOOL_ARG):
+    size = INDEX.shape[0] - 1
+    arr_loop = np.full((size-1)*5, -1.7976931348623157e+308, float)
+    for i in range(1, size):
+        start, end = INDEX[i], INDEX[i+1]
+        wgt_ = np.unique(WEIGHT[start:end])
+        wgt_[::-1].sort()
+        if len(wgt_) < 5:
+            arr_loop[5*(i-1):5*(i-1)+len(wgt_)] = wgt_
+        else:
+            arr_loop[5*(i-1):5*i] = wgt_[:5]
+
+    ValGeoNgn3 = -1.0
+    GeoNgn3 = -1.0
+    ValHarNgn3 = -1.0
+    HarNgn3 = -1.0
+    temp_profit = np.zeros(size-3)
+    for ii in range(len(arr_loop)):
+        v = arr_loop[ii]
+        bool_wgt = WEIGHT > v
+        temp_profit[:] = 0.0
+        reason = 0
+        for i in range(size-3, 0, -1):
+            start, end = INDEX[i], INDEX[i+1]
+            inv_cyc_val = bool_wgt[start:end] & BOOL_ARG[start:end]
+            if reason == 0:
+                inv_cyc_sym = SYMBOL[start:end]
+                end2, end3 = INDEX[i+2], INDEX[i+3]
+                pre_cyc_val = bool_wgt[end:end2]
+                pre_cyc_sym = SYMBOL[end:end2]
+                pre2_cyc_val = bool_wgt[end2:end3]
+                pre2_cyc_sym = SYMBOL[end2:end3]
+                coms = np.intersect1d(pre_cyc_sym[pre_cyc_val], inv_cyc_sym[inv_cyc_val])
+                coms = np.intersect1d(coms, pre2_cyc_sym[pre2_cyc_val])
+                isin = np.full(end-start, False)
+                for j in range(end-start):
+                    if inv_cyc_sym[j] in coms:
+                        isin[j] = True
+                lst_pro = PROFIT[start:end][isin]
+            else:
+                lst_pro = PROFIT[start:end][inv_cyc_val]
+
+            if len(lst_pro) == 0:
+                temp_profit[i-1] = INTEREST
+                if np.count_nonzero(inv_cyc_val) == 0:
+                    reason = 1
+            else:
+                temp_profit[i-1] = lst_pro.mean()
+                reason = 0
+
+        geo = geomean(temp_profit)
+        har = harmean(temp_profit)
+        if geo > GeoNgn3:
+            GeoNgn3 = geo
+            ValGeoNgn3 = v
+
+        if har > HarNgn3:
+            HarNgn3 = har
+            ValHarNgn3 = v
+
+    return ValGeoNgn3, GeoNgn3, ValHarNgn3, HarNgn3
