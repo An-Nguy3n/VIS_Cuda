@@ -192,6 +192,30 @@ def check_similar_2(f1_, f2_, level):
     if count >= level:
         return False
 
+    len1 = len(f1_)
+    len2 = len(f2_)
+    if len1 == len2:
+        if np.count_nonzero(f1_!=f2_) >= 2*level:
+            return False
+    else:
+        min_ = 100
+        if len1 < len2:
+            lenm = len1
+            F1 = f1_
+            F2 = f2_
+        else:
+            lenm = len2
+            F1 = f2_
+            F2 = f1_
+
+        for i in range(0, abs(len1-len2)+1, 2):
+            temp = np.count_nonzero(F1 != F2[i:i+lenm])
+            if temp < min_:
+                min_ = temp
+
+        if min_ >= 2*level:
+            return False
+
     return True
 
 
@@ -209,6 +233,7 @@ def _similarity_filter(list_ct, num_CT, level):
         if check:
             list_index.append(i)
             count += 1
+            print(count, i)
             if count == num_CT:
                 print(i)
                 break
